@@ -1,0 +1,115 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String        @id @default(uuid())
+  role             Role          @default(USER)
+  email            String        @unique
+  password         String?
+  firstName        String?
+  lastName         String?
+  stripeCustomerId String?
+  tools            Tool[]
+  subscription     Subscription?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  tools     Tool[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tool {
+  id          String     @id @default(uuid())
+  url         String
+  email       String
+  title       String?
+  status      StatusEnum @default(INACTIVE)
+  description String?
+  imageUrl    String?
+  user        User?      @relation(fields: [userId], references: [id])
+  userId      String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  category    Category[]
+}
+
+model Plan {
+  id            String         @id @default(uuid())
+  type          PlanType       @default(MONTHLY)
+  productType   PlanType       @default(PRO)
+  amount        Decimal        @default(19) @db.Decimal(9, 2)
+  planId        String         @unique
+  status        StatusEnum     @default(ACTIVE)
+  features      String[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  freeTrialdays Int?
+  subscriptions Subscription[]
+}
+
+enum StatusEnum {
+  ACTIVE
+  INACTIVE
+}
+
+enum PlanType {
+  BASIC
+  PRO
+  ENTERPRISE
+  YEARLY
+  MONTHLY
+  STANDARD
+  FREE
+}
+
+model Subscription {
+  id                 String       @id @default(uuid())
+  status             StripeStatus @default(ACTIVE)
+  currentPeriodEnd   DateTime?
+  currentPeriodStart DateTime?
+  subscriberId       String?
+  subscriptionId     String?
+  stripeCustomer     String       @unique
+  plan               Plan         @relation(fields: [planId], references: [planId])
+  planId             String
+  callLimit          Int?
+  mailLimit          Int?
+  userLimit          Int?
+  profile            User         @relation(fields: [stripeCustomer], references: [id], onDelete: Cascade)
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  canceledAt         DateTime?
+}
+
+enum StripeStatus {
+  REFUNDED
+  PAST_DUE
+  ACTIVE
+  INACTIVE
+  CANCELED
+  FAILED
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  active
+  inactive
+  canceled
+  failed
+  incomplete
+}
